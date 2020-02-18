@@ -1,7 +1,10 @@
 import numpy as np
 import bisect
 import itertools
-from random import sample 
+import random
+
+random.seed(a=19910615, version=2)
+
 print("/home/data/project/hash")
 
 class Hash():
@@ -135,74 +138,87 @@ class Hash():
             total += n
             if total > sum_thres:
                 break
+        if i - 1 < 1:
+            return 1
         return i - 1
     
     def make_random_sampled_sum_list(self, input_list, min_idx=None, max_idx=None, times=1):
-        # 인풋 리스트의 합의 조합을 (적당히 많이) 만듭니다 ^^
+        # 인풋 리스트의 합의 조합을 (적당히 많이) 만듭니다
         # 조합은 너무 오래 걸리므로, 개수(k)별로 k/len(input_list)번 반복 랜덤 샘플링 후 합산
         # 조합을 n배 하고 싶다면 times 파라미터를 변경
         # min ~ max (inclusive)
+        if len(input_list) == 1:
+            return input_list, { input_list[0]: input_list }
         if min_idx and max_idx:
             input_list = input_list[min_idx:max_idx+1]
         elif min_idx:
             input_list = input_list[min_idx:]
         elif max_idx:
             input_list = input_list[:max_idx+1]
-        
+
+        sum_to_combi = dict()
         random_combi_sum_set = set()
         for k in range(1, len(input_list)):
             repeat = int(len(input_list)/k) * times
             for i in range(repeat):
-                random_sample = sample(input_list, k)
-                random_combi_sum_set.add(sum(random_sample))
+                random_sample = random.sample(input_list, k)
+                _sum = sum(random_sample)
+                random_combi_sum_set.add(_sum)
+                sum_to_combi[_sum] = random_sample
                 
-        return sorted(list(random_combi_sum_set))
+        return sorted(list(random_combi_sum_set)), sum_to_combi
 
     def find_score_by_random_combi_sum(self, ratio_for_sum_thres=0.1):
-		# 일단 전체 인원수 대비 함수 파라미터 ratio 만큼의 값을 구함
-		# 스몰 그룹의 총합이 그 만큼을 못 넘도록 스몰 그룹을 구함
+        # 일단 전체 인원수 대비 함수 파라미터 ratio 만큼의 값을 구함
+        # 스몰 그룹의 총합이 그 만큼을 못 넘도록 스몰 그룹을 구함
         small_group_sum_thres = int(self.people * ratio_for_sum_thres)
         offset = self.get_small_group_offset(sum_thres=small_group_sum_thres)
 
         small_group = self.input_list[:offset]
         big_group = self.input_list[offset:]
-       	
-		# 각각에서 랜덤 샘플 방식으로 적당히 조합을 구함
-        small_group_sm_combi = self.make_random_sampled_sum_list(small_group)
-        big_group_sum_combi = self.make_random_sampled_sum_list(big_group)
+
+        # 각각에서 랜덤 샘플 방식으로 적당히 조합을 구함
+        small_group_combi_sum, small_group_sum_to_combi = self.make_random_sampled_sum_list(small_group)
+        big_group_combi_sum, big_group_sum_to_combi = self.make_random_sampled_sum_list(big_group)
 		
-		# 이미 정렬되어 있기 때문에 거꾸로 보면서 만족하는 합이 최적값
+        # 이미 정렬되어 있기 때문에 거꾸로 보면서 만족하는 합이 최적값
         max_num_slice = -1
-        for b in reversed(big_group_sum_combi):
-            for s in reversed(small_group_sm_combi):
+        for b in reversed(big_group_combi_sum):
+            for s in reversed(small_group_combi_sum):
                 total_slice = s + b
                 if total_slice < self.people:
-                     return total_slice
-        return 0 
+                     return sorted(small_group_sum_to_combi[s] + big_group_sum_to_combi[b])
+        return [] 
         
-    def bestAlgorithms(self):
-        pass
     
+    def candidate_val_to_original_idx(self, sol_list):
+        """원본 인풋을 참고해서 뽑힌 후보 답안 값의 인덱스를 복원한다"""
+        res = []
+        source_list = self.input_list
+        k = 0
+        for i, v in enumerate(source_list):
+            if k >= len(sol_list):
+                break
+            if sol_list[k] == v:
+                res.append(i)
+                k += 1
+        return res
+
+
 
 
 if __name__ == "__main__":
-    # h = Hash("./b_small.in")
-    # h = Hash("./c_medium.in")
-    # h = Hash("./d_quite_big.in")
-    h = Hash("./e_also_big.in")
+    import os
 
-    #mid_sum, selected = h.mideum_somangsarang()
-    #print(mid_sum, selected)
+    input_file_list = ['a_example.in', 'b_small.in', 'c_medium.in', 'd_quite_big.in', 'e_also_big.in']
 
-    print(h.find_score_by_random_combi_sum())
-
-
-'''
-1. 작 
-2. 큰(펭수)
-- 아이디어1
-    - 
-3. 바써
-4. 어큰
-5. 다방
-'''
+    def get_result(input_file):
+        h = Hash(os.path.join('.', input_file))
+        res = h.find_score_by_random_combi_sum()
+        res_idx_list = h.candidate_val_to_original_idx(res) 
+        with open(input_file[:-3] + '.out', 'w') as f:
+            f.write('{}\n'.format(len(res_idx_list)))
+            f.write('{}\n'.format(' '.join([ str(n) for n in res_idx_list])))
+    
+    for input_file in input_file_list[:]:
+        get_result(input_file)
