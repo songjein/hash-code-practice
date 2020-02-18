@@ -93,36 +93,6 @@ class Hash():
             size_list = [int(s.strip()) for s in size_list if int(s.strip()) <= m]
         return m, len(size_list), size_list
 
-    def get_small_group_offset(self, sum_thres=10000):
-        # 앞에서 부터 총 합이 sum_thres를 넘기 직전까지 리스트를 자릅니다 ^^ 싹둑
-        total = 0
-        for i, n in enumerate(self.input_list):
-            total += n
-            if total > sum_thres:
-                break
-        return i - 1
-    
-    def make_random_sampled_sum_list(self, input_list, min_idx=None, max_idx=None, times=1):
-        # 인풋 리스트의 합의 조합을 (적당히 많이) 만듭니다 ^^
-        # 조합은 너무 오래 걸리므로, 개수(k)별로 k/len(input_list)번 반복 랜덤 샘플링 후 합산
-        # 조합을 n배 하고 싶다면 times 파라미터를 변경
-        # min ~ max (inclusive)
-        if min_idx and max_idx:
-            input_list = input_list[min_idx:max_idx+1]
-        elif min_idx:
-            input_list = input_list[min_idx:]
-        elif max_idx:
-            input_list = input_list[:max_idx+1]
-        
-        random_combi_sum_set = set()
-        for k in range(1, len(input_list)):
-            repeat = int(len(input_list)/k) * times
-            for i in range(repeat):
-                random_sample = sample(input_list, k)
-                random_combi_sum_set.add(sum(random_sample))
-                
-        return sorted(list(random_combi_sum_set))
-
     def make_small_scores(self):
         # 작은 점수 조합 리스트 만들기 (바이너리 서치용)
         self.small_scores = []
@@ -158,17 +128,50 @@ class Hash():
                 final_choice.add(i)
         return large_sum + small, final_choice
 
+    def get_small_group_offset(self, sum_thres=10000):
+        # 앞에서 부터 총 합이 sum_thres를 넘기 직전의 인덱스를 구합니다
+        total = 0
+        for i, n in enumerate(self.input_list):
+            total += n
+            if total > sum_thres:
+                break
+        return i - 1
+    
+    def make_random_sampled_sum_list(self, input_list, min_idx=None, max_idx=None, times=1):
+        # 인풋 리스트의 합의 조합을 (적당히 많이) 만듭니다 ^^
+        # 조합은 너무 오래 걸리므로, 개수(k)별로 k/len(input_list)번 반복 랜덤 샘플링 후 합산
+        # 조합을 n배 하고 싶다면 times 파라미터를 변경
+        # min ~ max (inclusive)
+        if min_idx and max_idx:
+            input_list = input_list[min_idx:max_idx+1]
+        elif min_idx:
+            input_list = input_list[min_idx:]
+        elif max_idx:
+            input_list = input_list[:max_idx+1]
+        
+        random_combi_sum_set = set()
+        for k in range(1, len(input_list)):
+            repeat = int(len(input_list)/k) * times
+            for i in range(repeat):
+                random_sample = sample(input_list, k)
+                random_combi_sum_set.add(sum(random_sample))
+                
+        return sorted(list(random_combi_sum_set))
 
     def find_score_by_random_combi_sum(self, ratio_for_sum_thres=0.1):
+		# 일단 전체 인원수 대비 함수 파라미터 ratio 만큼의 값을 구함
+		# 스몰 그룹의 총합이 그 만큼을 못 넘도록 스몰 그룹을 구함
         small_group_sum_thres = int(self.people * ratio_for_sum_thres)
         offset = self.get_small_group_offset(sum_thres=small_group_sum_thres)
 
         small_group = self.input_list[:offset]
         big_group = self.input_list[offset:]
-        
+       	
+		# 각각에서 랜덤 샘플 방식으로 적당히 조합을 구함
         small_group_sm_combi = self.make_random_sampled_sum_list(small_group)
         big_group_sum_combi = self.make_random_sampled_sum_list(big_group)
 		
+		# 이미 정렬되어 있기 때문에 거꾸로 보면서 만족하는 합이 최적값
         max_num_slice = -1
         for b in reversed(big_group_sum_combi):
             for s in reversed(small_group_sm_combi):
